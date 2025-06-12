@@ -27,6 +27,8 @@ password = os.getenv("LINKEDIN_PASSWORD")
 
 try:
     actions.login(driver, email, password) # if email and password isnt given, it'll prompt in terminal
+    
+    # Scrape a person's data
     person = Person("https://www.linkedin.com/in/andre-iguodala-65b48ab5", driver=driver)
     
     print("Successfully scraped person data:")
@@ -36,14 +38,21 @@ try:
     print(f"Location: {getattr(person, 'location', 'N/A')}")
     print(f"About: {person.about}")
     
-    # Optional: Export to CSV
-    export_csv = input("\nWould you like to export this data to CSV? (y/n): ").lower().strip()
-    if export_csv in ['y', 'yes']:
-        try:
-            csv_filename = person.to_csv()
-            print(f"Data exported to: {csv_filename}")
-        except Exception as csv_error:
-            print(f"Error exporting to CSV: {csv_error}")
+    # Export to CSV
+    print("\nExporting to CSV...")
+    csv_filename = person.to_csv()
+    print(f"Data exported to: {csv_filename}")
+    
+    # Also demonstrate dictionary export
+    person_dict = person.to_dict()
+    print(f"\nSample data structure:")
+    for key, value in list(person_dict.items())[:10]:  # Show first 10 fields
+        print(f"  {key}: {value}")
+    print("  ...")
+    
+    # Example of exporting multiple people (if you want to scrape multiple profiles)
+    # persons = [person]  # Add more Person objects here
+    # Person.export_multiple_to_csv(persons, "multiple_persons.csv")
     
 except Exception as e:
     print(f"Error occurred: {e}")

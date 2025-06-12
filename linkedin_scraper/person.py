@@ -466,3 +466,103 @@ class Person(Scraper):
             acc=self.accomplishments,
             conn=self.contacts,
         )
+
+    def to_dict(self):
+        """Convert Person object to dictionary for CSV export"""
+        # Helper function to safely convert dataclass to dict
+        def dataclass_to_dict(obj):
+            if hasattr(obj, '__dict__'):
+                return {k: v for k, v in obj.__dict__.items() if v is not None}
+            return {}
+        
+        # Get basic person info
+        person_data = {
+            'name': self.name,
+            'linkedin_url': self.linkedin_url,
+            'location': getattr(self, 'location', None),
+            'about': self.about,
+            'current_company': self.company,
+            'current_job_title': self.job_title,
+        }
+        
+        # Add experience data (most recent first)
+        if self.experiences:
+            for i, exp in enumerate(self.experiences[:3]):  # Limit to top 3 experiences
+                prefix = f'experience_{i+1}_' if i > 0 else 'current_'
+                exp_dict = dataclass_to_dict(exp)
+                for key, value in exp_dict.items():
+                    person_data[f'{prefix}{key}'] = value
+        
+        # Add education data (most recent first)
+        if self.educations:
+            for i, edu in enumerate(self.educations[:2]):  # Limit to top 2 educations
+                prefix = f'education_{i+1}_' if i > 0 else 'latest_education_'
+                edu_dict = dataclass_to_dict(edu)
+                for key, value in edu_dict.items():
+                    person_data[f'{prefix}{key}'] = value
+        
+        # Add interests (as comma-separated string)
+        if self.interests:
+            interests_list = [getattr(interest, 'title', str(interest)) for interest in self.interests if interest]
+            person_data['interests'] = ', '.join(interests_list[:5])  # Limit to 5 interests
+        
+        # Add accomplishments (as comma-separated string)
+        if self.accomplishments:
+            accomplishments_list = []
+            for acc in self.accomplishments[:5]:  # Limit to 5 accomplishments
+                if hasattr(acc, 'title') and hasattr(acc, 'category'):
+                    accomplishments_list.append(f"{acc.category}: {acc.title}")
+                elif hasattr(acc, 'title'):
+                    accomplishments_list.append(str(acc.title))
+            person_data['accomplishments'] = ', '.join(accomplishments_list)
+        
+        # Add contact count
+        person_data['contacts_count'] = len(self.contacts) if self.contacts else 0
+        
+        return person_data
+
+    def to_csv(self, filename=None):
+        """Export Person data to CSV file"""
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError("pandas is required for CSV export. Install it with: pip install pandas")
+        
+        # Generate filename if not provided
+        if filename is None:
+            safe_name = ''.join(c for c in (self.name or 'person') if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            safe_name = safe_name.replace(' ', '_')
+            filename = f"{safe_name}_linkedin_data.csv"
+        
+        # Convert to DataFrame and save
+        data = self.to_dict()
+        df = pd.DataFrame([data])
+        df.to_csv(filename, index=False)
+        return filename
+
+    @staticmethod
+    def export_multiple_to_csv(persons, filename="linkedin_persons_data.csv"):
+        """Export multiple Person objects to a single CSV file"""
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError("pandas is required for CSV export. Install it with: pip install pandas")
+        
+        if not persons:
+            raise ValueError("No persons provided for export")
+        
+        # Convert all persons to dictionaries
+        data_list = []
+        for person in persons:
+            if hasattr(person, 'to_dict'):
+                data_list.append(person.to_dict())
+            else:
+                print(f"Warning: Person object {person} does not have to_dict method")
+        
+        if not data_list:
+            raise ValueError("No valid person data to export")
+        
+        # Create DataFrame and save
+        df = pd.DataFrame(data_list)
+        df.to_csv(filename, index=False)
+        return filename
